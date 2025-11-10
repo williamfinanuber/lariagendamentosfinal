@@ -1,0 +1,15 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ATENÇÃO: Regras abertas para desenvolvimento.
+    // Permite que qualquer pessoa leia e escreva (crie, atualize, delete)
+    // em qualquer coleção. Isso resolve os problemas de permissão, mas deve ser
+    // revisado com regras de autenticação para produção.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
