@@ -24,7 +24,7 @@ export default function ConditionalLayout({
   }
   
   return (
-    <div className={cn("flex flex-col h-full", isHomePage ? "bg-[#DDA0DD]" : "bg-white")}>
+    <div className={cn("flex flex-col h-full", isHomePage ? "bg-[#FFBBFF]" : "bg-white")}>
       <Header />
       <main className="flex-1 flex flex-col">
         {children}
