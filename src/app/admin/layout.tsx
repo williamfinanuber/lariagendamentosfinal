@@ -40,7 +40,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const menuItems = [
         { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/admin/agenda', label: 'Agenda', icon: Calendar },
-        { href: '/admin/dynamic-agenda', label: 'Agenda Dinâmica', icon: CalendarClock },
         { href: '/admin/clients', label: 'Clientes', icon: Users },
         { href: '/admin/reminders', label: 'Lembretes', icon: Bell },
         { href: '/admin/procedures', label: 'Procedimentos', icon: Eye },
