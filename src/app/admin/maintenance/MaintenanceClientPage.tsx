@@ -9,21 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, addDays, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Wrench, MessageSquare, Search, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { Wrench, MessageSquare, Search, Loader2, Trash2, AlertTriangle, KeyRound } from 'lucide-react';
 import type { Booking } from '@/lib/types';
 import { markMaintenanceReminderAsSent, deleteAllData } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 interface MaintenanceClientPageProps {
   completedBookings: Booking[];
@@ -35,7 +34,12 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
   const { toast } = useToast();
+  const correctPassword = '123456';
 
   const handleFilterClick = () => {
     const days = parseInt(maintenanceDays, 10);
@@ -87,20 +91,34 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
   };
 
   const handleClearAllData = async () => {
+    setPasswordError('');
+    if (password !== correctPassword) {
+      setPasswordError('Senha incorreta. A limpeza de dados não foi executada.');
+      toast({ title: "Senha Incorreta", description: "A operação foi cancelada.", variant: "destructive" });
+      return;
+    }
+
     setIsDeletingAll(true);
     toast({ title: "Iniciando limpeza...", description: "Isso pode levar alguns segundos." });
+    
     try {
         await deleteAllData();
         toast({ title: "Sucesso!", description: "Todos os agendamentos, transações e procedimentos foram apagados." });
         setFilteredClients([]);
-        // Ideally, you would trigger a full app refresh here or redirect.
-        // For now, just clearing local state.
+        setIsConfirmOpen(false);
+        setPassword('');
     } catch (error) {
         console.error("Error clearing all data: ", error);
         toast({ title: "Erro na Limpeza", description: "Não foi possível apagar todos os dados.", variant: "destructive" });
     } finally {
         setIsDeletingAll(false);
     }
+  }
+  
+  const resetConfirmation = () => {
+      setIsConfirmOpen(false);
+      setPassword('');
+      setPasswordError('');
   }
 
   return (
@@ -184,30 +202,44 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
                     <h3 className="font-semibold">Limpar Todos os Dados</h3>
                     <p className="text-sm text-muted-foreground">Apaga todos os agendamentos, transações financeiras e procedimentos.</p>
                 </div>
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                 <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                    <DialogTrigger asChild>
                         <Button variant="destructive" disabled={isDeletingAll} className="mt-4 sm:mt-0">
                             {isDeletingAll ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}
                             Limpar Dados
                         </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta ação é irreversível. Todos os agendamentos, faturamentos e procedimentos serão **permanentemente apagados**.
-                             Sua aplicação será reiniciada do zero. Deseja continuar?
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeletingAll}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearAllData} disabled={isDeletingAll}>
-                            {isDeletingAll ? <Loader2 className="animate-spin mr-2"/> : null}
-                            Sim, apagar tudo
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2"><AlertTriangle/>Você tem certeza absoluta?</DialogTitle>
+                            <DialogDescription>
+                                Esta ação é irreversível. Todos os dados serão **permanentemente apagados**.
+                                Para confirmar, por favor, insira a senha de administrador.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2 pt-2">
+                            <Label htmlFor="password-confirm" className="flex items-center gap-2">
+                                <KeyRound className="h-4 w-4" />
+                                Senha do Administrador
+                            </Label>
+                            <Input
+                                id="password-confirm"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Digite a senha"
+                            />
+                            {passwordError && <p className="text-sm font-medium text-destructive">{passwordError}</p>}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="secondary" onClick={resetConfirmation} disabled={isDeletingAll}>Cancelar</Button>
+                            <Button onClick={handleClearAllData} disabled={isDeletingAll} variant="destructive">
+                                {isDeletingAll ? <Loader2 className="animate-spin mr-2"/> : null}
+                                Sim, apagar tudo
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </CardContent>
     </Card>
