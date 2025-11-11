@@ -23,12 +23,12 @@ export default function Home() {
         <div className="container mx-auto px-4 flex flex-col items-center text-center">
             <Hero />
             <div className="relative z-10 -mt-8 flex flex-col gap-4 sm:flex-row">
-                 <Button asChild size="lg" className="px-8 py-6 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                 <Button asChild size="lg" className="px-8 py-6 text-lg text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl">
                     <Link href="/procedimentos">
                         Agendar Procedimentos
                     </Link>
                 </Button>
-                 <Button asChild size="lg" variant="outline" className="border-2 border-primary/50 bg-white/80 px-8 py-6 text-lg font-semibold text-primary shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary hover:bg-white hover:shadow-xl">
+                 <Button asChild size="lg" variant="outline" className="border-2 border-primary/50 bg-white/80 px-8 py-6 text-lg text-primary shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary hover:bg-white hover:shadow-xl">
                     <Link href="/meus-agendamentos">
                         Meus Agendamentos
                     </Link>
