@@ -255,6 +255,7 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
                        <span className="text-sm font-medium text-green-600 flex items-center gap-2"><CheckCircle size={16}/> Finalizado</span>
                    )}
                    {booking.status === 'confirmed' && (
+                    <>
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -265,6 +266,16 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
                          {isLoading[booking.id] ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
                          Atendido
                       </Button>
+                       <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700 h-8 px-2 text-xs"
+                            onClick={() => openCancelAlert(booking)}
+                            disabled={isLoading[booking.id]}
+                        >
+                           <X className="mr-1 h-3 w-3"/> Cancelar
+                        </Button>
+                    </>
                    )}
                    {booking.status === 'pending' && (
                      <>
