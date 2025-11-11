@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -103,7 +104,7 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
     
     try {
         await deleteAllData();
-        toast({ title: "Sucesso!", description: "Todos os agendamentos, transações e procedimentos foram apagados." });
+        toast({ title: "Sucesso!", description: "Todos os agendamentos e transações foram apagados." });
         setFilteredClients([]);
         setIsConfirmOpen(false);
         setPassword('');
@@ -199,8 +200,8 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
         <CardContent>
             <div className="flex flex-col sm:flex-row justify-between items-center rounded-lg border border-destructive/50 p-4">
                 <div>
-                    <h3 className="font-semibold">Limpar Todos os Dados</h3>
-                    <p className="text-sm text-muted-foreground">Apaga todos os agendamentos, transações financeiras e procedimentos.</p>
+                    <h3 className="font-semibold">Limpar Dados do Histórico</h3>
+                    <p className="text-sm text-muted-foreground">Apaga todos os agendamentos e transações financeiras. Seus procedimentos não serão afetados.</p>
                 </div>
                  <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
                     <DialogTrigger asChild>

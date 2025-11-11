@@ -662,7 +662,7 @@ export const deleteProduct = (id: string) => {
 export const deleteAllData = async () => {
     const batch = writeBatch(db);
 
-    const collectionsToDelete = ['bookings', 'transactions', 'procedures'];
+    const collectionsToDelete = ['bookings', 'transactions'];
 
     for (const collectionName of collectionsToDelete) {
         const snapshot = await getDocs(collection(db, collectionName));
