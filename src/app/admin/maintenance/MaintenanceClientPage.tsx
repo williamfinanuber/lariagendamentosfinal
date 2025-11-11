@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, addDays, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Wrench, MessageSquare, Search, Loader2 } from 'lucide-react';
+import { Wrench, MessageSquare, Search, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import type { Booking } from '@/lib/types';
-import { markMaintenanceReminderAsSent } from '@/lib/firebase';
+import { markMaintenanceReminderAsSent, deleteAllData } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface MaintenanceClientPageProps {
   completedBookings: Booking[];
@@ -23,6 +34,7 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
   const [filteredClients, setFilteredClients] = useState<Booking[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const { toast } = useToast();
 
   const handleFilterClick = () => {
@@ -74,7 +86,25 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
     }
   };
 
+  const handleClearAllData = async () => {
+    setIsDeletingAll(true);
+    toast({ title: "Iniciando limpeza...", description: "Isso pode levar alguns segundos." });
+    try {
+        await deleteAllData();
+        toast({ title: "Sucesso!", description: "Todos os agendamentos, transações e procedimentos foram apagados." });
+        setFilteredClients([]);
+        // Ideally, you would trigger a full app refresh here or redirect.
+        // For now, just clearing local state.
+    } catch (error) {
+        console.error("Error clearing all data: ", error);
+        toast({ title: "Erro na Limpeza", description: "Não foi possível apagar todos os dados.", variant: "destructive" });
+    } finally {
+        setIsDeletingAll(false);
+    }
+  }
+
   return (
+    <div className="space-y-6">
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl md:text-2xl"><Wrench/> Clientes para Manutenção</CardTitle>
@@ -142,5 +172,45 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
         </Table>
       </CardContent>
     </Card>
+
+     <Card className="border-destructive">
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle/> Área de Risco</CardTitle>
+            <CardDescription>Ações nesta seção são permanentes e não podem ser desfeitas.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="flex flex-col sm:flex-row justify-between items-center rounded-lg border border-destructive/50 p-4">
+                <div>
+                    <h3 className="font-semibold">Limpar Todos os Dados</h3>
+                    <p className="text-sm text-muted-foreground">Apaga todos os agendamentos, transações financeiras e procedimentos.</p>
+                </div>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isDeletingAll} className="mt-4 sm:mt-0">
+                            {isDeletingAll ? <Loader2 className="animate-spin mr-2"/> : <Trash2 className="mr-2"/>}
+                            Limpar Dados
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta ação é irreversível. Todos os agendamentos, faturamentos e procedimentos serão **permanentemente apagados**.
+                             Sua aplicação será reiniciada do zero. Deseja continuar?
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeletingAll}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearAllData} disabled={isDeletingAll}>
+                            {isDeletingAll ? <Loader2 className="animate-spin mr-2"/> : null}
+                            Sim, apagar tudo
+                        </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </CardContent>
+    </Card>
+    </div>
   );
 }

@@ -658,4 +658,20 @@ export const deleteProduct = (id: string) => {
     return deleteDoc(productDocRef);
 };
 
+
+export const deleteAllData = async () => {
+    const batch = writeBatch(db);
+
+    const collectionsToDelete = ['bookings', 'transactions', 'procedures'];
+
+    for (const collectionName of collectionsToDelete) {
+        const snapshot = await getDocs(collection(db, collectionName));
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+    }
+
+    await batch.commit();
+};
+
 export { app, db, auth };
