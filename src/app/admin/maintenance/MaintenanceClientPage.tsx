@@ -10,9 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, addDays, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Wrench, MessageSquare, Search, Loader2, Trash2, AlertTriangle, KeyRound } from 'lucide-react';
+import { Wrench, MessageSquare, Search, Loader2, Trash2, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
 import type { Booking } from '@/lib/types';
-import { markMaintenanceReminderAsSent, deleteAllData } from '@/lib/firebase';
+import { markMaintenanceReminderAsSent, deleteAllData, restoreDefaultProcedures } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -35,6 +35,7 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -122,6 +123,21 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
       setPasswordError('');
   }
 
+  const handleRestoreProcedures = async () => {
+    if(!confirm("Tem certeza que deseja restaurar os procedimentos padrão? Isso adicionará os serviços pré-definidos à sua lista. Procedimentos existentes com o mesmo nome não serão duplicados.")) return;
+
+    setIsRestoring(true);
+    try {
+      await restoreDefaultProcedures();
+      toast({ title: "Procedimentos restaurados!", description: "Sua lista de serviços foi atualizada." });
+    } catch (error: any) {
+      console.error("Error restoring procedures: ", error);
+      toast({ title: "Erro ao restaurar", description: error.message || "Não foi possível restaurar os procedimentos.", variant: "destructive" });
+    } finally {
+      setIsRestoring(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
     <Card>
@@ -195,9 +211,9 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
      <Card className="border-destructive">
         <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle/> Área de Risco</CardTitle>
-            <CardDescription>Ações nesta seção são permanentes e não podem ser desfeitas.</CardDescription>
+            <CardDescription>Ações nesta seção são permanentes e podem impactar seus dados.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid sm:grid-cols-2 gap-4">
             <div className="flex flex-col sm:flex-row justify-between items-center rounded-lg border border-destructive/50 p-4">
                 <div>
                     <h3 className="font-semibold">Limpar Dados do Histórico</h3>
@@ -241,6 +257,16 @@ export default function MaintenanceClientPage({ completedBookings }: Maintenance
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+            </div>
+             <div className="flex flex-col sm:flex-row justify-between items-center rounded-lg border border-border p-4">
+                <div>
+                    <h3 className="font-semibold">Restaurar Procedimentos</h3>
+                    <p className="text-sm text-muted-foreground">Recadastra a lista de serviços padrão caso tenham sido removidos.</p>
+                </div>
+                <Button variant="outline" onClick={handleRestoreProcedures} disabled={isRestoring} className="mt-4 sm:mt-0">
+                    {isRestoring ? <Loader2 className="animate-spin mr-2"/> : <RefreshCw className="mr-2"/>}
+                    Restaurar
+                </Button>
             </div>
         </CardContent>
     </Card>

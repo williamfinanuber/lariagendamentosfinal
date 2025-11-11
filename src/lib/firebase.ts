@@ -53,6 +53,19 @@ if (getApps().length === 0) {
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+const defaultProcedures: Omit<Procedure, 'id'>[] = [
+  { name: 'Volume Brasileiro', description: 'Extensão de cílios com técnica de volume brasileiro.', price: 100, duration: 120, imageUrl: '' },
+  { name: 'Volume Express', description: 'Extensão de cílios rápida para um look mais discreto.', price: 80, duration: 90, imageUrl: '' },
+  { name: 'Volume Glamour', description: 'Extensão de cílios para um olhar marcante e glamouroso.', price: 120, duration: 150, imageUrl: '' },
+  { name: 'Volume Luxo', description: 'A técnica mais avançada para um volume e definição de luxo.', price: 150, duration: 180, imageUrl: '' },
+  { name: 'Manutenção Volume Brasileiro', description: 'Manutenção da extensão de volume brasileiro.', price: 70, duration: 90, imageUrl: '' },
+  { name: 'Manutenção Volume Glamour', description: 'Manutenção da extensão de volume glamour.', price: 80, duration: 100, imageUrl: '' },
+  { name: 'Manutenção Volume Luxo', description: 'Manutenção da extensão de volume de luxo.', price: 100, duration: 120, imageUrl: '' },
+  { name: 'Remoção', description: 'Remoção segura das extensões de cílios.', price: 30, duration: 30, imageUrl: '' },
+  { name: 'Design de Sobrancelha Simples', description: 'Design e modelagem das sobrancelhas.', price: 25, duration: 30, imageUrl: '' },
+  { name: 'Design de Sobrancelha com Henna', description: 'Design de sobrancelhas com aplicação de henna para preenchimento.', price: 35, duration: 45, imageUrl: '' },
+];
+
 // Procedures
 export const getProcedures = async (): Promise<Procedure[]> => {
     const proceduresCollection = collection(db, "procedures");
@@ -69,6 +82,27 @@ export const getProcedures = async (): Promise<Procedure[]> => {
         }
     }) as Procedure[];
 };
+
+export const restoreDefaultProcedures = async () => {
+    const proceduresCollection = collection(db, "procedures");
+    const snapshot = await getDocs(proceduresCollection);
+
+    // Check if procedures already exist to avoid duplication
+    const existingNames = new Set(snapshot.docs.map(doc => doc.data().name));
+    const proceduresToAdd = defaultProcedures.filter(p => !existingNames.has(p.name));
+    
+    if (proceduresToAdd.length === 0) {
+        throw new Error("Os procedimentos padrão já existem. Nenhuma ação foi realizada.");
+    }
+
+    const batch = writeBatch(db);
+    proceduresToAdd.forEach(proc => {
+        const docRef = doc(proceduresCollection);
+        batch.set(docRef, proc);
+    });
+    await batch.commit();
+};
+
 
 export const addProcedure = (data: Omit<Procedure, 'id'>) => {
     const proceduresCollection = collection(db, "procedures");
