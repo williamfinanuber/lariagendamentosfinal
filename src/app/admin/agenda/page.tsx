@@ -20,7 +20,7 @@ function AgendaData() {
           getProcedures(),
           getAvailability()
         ]);
-        const filteredBookings = allBookings.filter((booking: Booking) => booking.status === 'confirmed' || booking.status === 'completed');
+        const filteredBookings = allBookings.filter((booking: Booking) => booking.status === 'pending' || booking.status === 'confirmed' || booking.status === 'completed');
         setData({ bookings: filteredBookings, procedures, availability });
       } catch (error) {
         console.error("Failed to fetch agenda data", error);
@@ -50,7 +50,7 @@ export default function AgendaPage() {
         <Card>
             <CardHeader>
                 <CardTitle>Agenda de Clientes</CardTitle>
-                <CardDescription>Visualize seus agendamentos confirmados e adicione novos agendamentos manualmente.</CardDescription>
+                <CardDescription>Visualize e gerencie todos os seus agendamentos, confirme os pendentes ou adicione novos manualmente.</CardDescription>
             </CardHeader>
         </Card>
         <AgendaData />

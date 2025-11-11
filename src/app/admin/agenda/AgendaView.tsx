@@ -8,11 +8,22 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Availability, Booking, Procedure } from '@/lib/types';
-import { Calendar as CalendarIcon, Clock, User, CheckCircle, Loader2, PlusCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, CheckCircle, Loader2, PlusCircle, Trash2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { markBookingAsCompleted, getBookings, getAvailability } from '@/lib/firebase';
+import { markBookingAsCompleted, getBookings, getAvailability, updateBookingStatus, deleteBookingAndRestoreTime } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import AdminBookingDialog from './AdminBookingDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 
 
 interface AgendaViewProps {
@@ -27,6 +38,9 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+
   const { toast } = useToast();
   
   useEffect(() => {
@@ -40,8 +54,8 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
           getBookings(),
           getAvailability()
       ]);
-      const confirmed = freshBookings.filter(b => b.status === 'confirmed' || b.status === 'completed');
-      setBookings(confirmed);
+      const relevantBookings = freshBookings.filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'completed');
+      setBookings(relevantBookings);
       setAvailability(freshAvailability);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -67,6 +81,51 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
     }
   };
 
+  const handleConfirmBooking = async (booking: Booking) => {
+     setIsLoading(prev => ({ ...prev, [booking.id]: true }));
+     try {
+        await updateBookingStatus(booking.id, 'confirmed');
+        toast({ title: "Agendamento confirmado!" });
+        await fetchAllData();
+     } catch (error) {
+        console.error("Error confirming booking:", error);
+        toast({ title: "Erro ao confirmar agendamento", variant: "destructive" });
+     } finally {
+        setIsLoading(prev => ({ ...prev, [booking.id]: false }));
+     }
+  }
+  
+  const openCancelAlert = (booking: Booking) => {
+    setBookingToCancel(booking);
+    setIsAlertOpen(true);
+  }
+
+  const handleCancelBooking = async () => {
+    if (!bookingToCancel) return;
+    
+    setIsLoading(prev => ({ ...prev, [bookingToCancel.id]: true }));
+    setIsAlertOpen(false);
+
+    try {
+      await deleteBookingAndRestoreTime({
+          id: bookingToCancel.id,
+          date: bookingToCancel.date,
+          time: bookingToCancel.time,
+      });
+      toast({ title: 'Agendamento cancelado', description: 'O horário foi liberado novamente.', variant: 'destructive' });
+      setBookingToCancel(null);
+      await fetchAllData();
+    } catch (error) {
+       console.error('Error discarding booking:', error);
+       toast({ title: 'Erro ao cancelar agendamento', variant: 'destructive' });
+    } finally {
+        if(bookingToCancel) {
+            setIsLoading(prev => ({ ...prev, [bookingToCancel.id]: false }));
+        }
+    }
+  };
+
+
   const bookingsByDate = useMemo(() => {
     const map = new Map<string, Booking[]>();
     bookings.forEach(booking => {
@@ -80,22 +139,26 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
     return map;
   }, [bookings]);
 
-  const { completedDays, hasConfirmedDays } = useMemo(() => {
+  const { completedDays, hasConfirmedDays, hasPendingDays } = useMemo(() => {
     const completed: Date[] = [];
     const hasConfirmed: Date[] = [];
+    const hasPending: Date[] = [];
     
     bookingsByDate.forEach((dayBookings, dateStr) => {
         const date = new Date(dateStr + 'T12:00:00Z');
         const hasConfirmedBooking = dayBookings.some(b => b.status === 'confirmed');
+        const hasPendingBooking = dayBookings.some(b => b.status === 'pending');
         const allCompleted = dayBookings.every(b => b.status === 'completed');
 
-        if (hasConfirmedBooking) {
+        if (hasPendingBooking) {
+            hasPending.push(date);
+        } else if (hasConfirmedBooking) {
             hasConfirmed.push(date);
-        } else if (allCompleted) {
+        } else if (allCompleted && dayBookings.length > 0) {
             completed.push(date);
         }
     });
-    return { completedDays: completed, hasConfirmedDays: hasConfirmed };
+    return { completedDays: completed, hasConfirmedDays: hasConfirmed, hasPendingDays: hasPending };
   }, [bookingsByDate]);
 
   const todaysBookings = useMemo(() => {
@@ -114,6 +177,24 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
         onBookingCreated={onBookingCreated}
         selectedDate={selectedDate}
     />
+    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Esta ação irá apagar o agendamento permanentemente e liberar o horário novamente. Deseja continuar?
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading[bookingToCancel?.id || '']}>Não, manter</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelBooking} disabled={isLoading[bookingToCancel?.id || '']}>
+                 {isLoading[bookingToCancel?.id || ''] && <Loader2 className="animate-spin mr-2"/>}
+                Sim, cancelar
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
       <Card className="lg:col-span-2">
         <CardHeader className="flex flex-row justify-between items-center">
@@ -131,8 +212,13 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
             modifiers={{ 
               hasConfirmed: hasConfirmedDays,
               allCompleted: completedDays,
+              hasPending: hasPendingDays,
             }}
             modifiersStyles={{ 
+                hasPending: {
+                    backgroundColor: '#f59e0b', // amber-500
+                    color: 'white',
+                },
                 hasConfirmed: {
                     backgroundColor: '#22c55e', // green-500
                     color: 'white',
@@ -152,7 +238,10 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
         <CardContent className="space-y-4">
           {todaysBookings.length > 0 ? (
             todaysBookings.map(booking => (
-              <div key={booking.id} className="p-4 rounded-lg border bg-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div key={booking.id} className={cn("p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4", {
+                'bg-amber-50 border-amber-200': booking.status === 'pending',
+                'bg-card': booking.status !== 'pending'
+              })}>
                 <div className="flex-1 space-y-1">
                   <p className="flex items-center gap-2 font-semibold text-xs md:text-sm"><User size={16} className="text-primary"/> {booking.clientName}</p>
                   <p className="text-xs text-muted-foreground">{booking.procedureName}</p>
@@ -162,9 +251,10 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
                    </Badge>
                 </div>
                  <div className="flex items-center gap-2 self-end sm:self-center">
-                   {booking.status === 'completed' ? (
+                   {booking.status === 'completed' && (
                        <span className="text-sm font-medium text-green-600 flex items-center gap-2"><CheckCircle size={16}/> Finalizado</span>
-                   ) : (
+                   )}
+                   {booking.status === 'confirmed' && (
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -176,11 +266,34 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
                          Atendido
                       </Button>
                    )}
+                   {booking.status === 'pending' && (
+                     <>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700 h-8 px-2 text-xs"
+                            onClick={() => handleConfirmBooking(booking)}
+                            disabled={isLoading[booking.id]}
+                        >
+                            {isLoading[booking.id] ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <Check className="mr-2 h-4 w-4"/>}
+                            Confirmar
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700 h-8 px-2 text-xs"
+                            onClick={() => openCancelAlert(booking)}
+                            disabled={isLoading[booking.id]}
+                        >
+                           <X className="mr-1 h-3 w-3"/> Cancelar
+                        </Button>
+                     </>
+                   )}
                  </div>
               </div>
             ))
           ) : (
-            <p className="text-center text-muted-foreground py-8 text-sm md:text-base">Nenhum agendamento confirmado para esta data.</p>
+            <p className="text-center text-muted-foreground py-8 text-sm md:text-base">Nenhum agendamento para esta data.</p>
           )}
         </CardContent>
       </Card>
