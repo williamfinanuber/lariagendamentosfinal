@@ -9,7 +9,7 @@ import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Gift, MessageSquare, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Client {
   name: string;
@@ -22,28 +22,29 @@ interface ClientsPageClientProps {
 }
 
 export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<'all' | 'month' | 'today'>('all');
   const [sentMessages, setSentMessages] = useState<Record<string, boolean>>({});
-  const router = useRouter();
-
+  
   const getTodayStorageKey = () => {
     return `birthday_sent_${format(new Date(), 'yyyy-MM-dd')}`;
   };
 
   useEffect(() => {
-    // Load sent messages from localStorage on component mount
     const todayKey = getTodayStorageKey();
     const storedSentMessages = JSON.parse(localStorage.getItem(todayKey) || '{}');
     setSentMessages(storedSentMessages);
     
-    // Automatically set filter based on URL query param
-    const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.get('birthdays') === 'today'){
-        setFilter('today');
-    } else if (urlParams.has('birthdays')) {
-        setFilter('month');
+    const birthdayFilter = searchParams.get('birthdays');
+    if (birthdayFilter === 'today') {
+      setFilter('today');
+    } else if (birthdayFilter) {
+      setFilter('month');
+    } else {
+      setFilter('all');
     }
-  }, []);
+  }, [searchParams]);
 
   const birthdayMessage = (clientName: string) => {
     return encodeURIComponent(
@@ -52,42 +53,41 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
   };
 
   const filteredClients = useMemo(() => {
-    const sortedClients = clients.sort((a, b) => {
-        if (!a.birthDate || !b.birthDate) return 0;
-        try {
-            const dayA = parseISO(a.birthDate).getDate();
-            const dayB = parseISO(b.birthDate).getDate();
-            return dayA - dayB;
-        } catch (e) { return 0; }
-    });
+    const sortedByDay = (a: Client, b: Client) => {
+      if (!a.birthDate || !b.birthDate) return 0;
+      try {
+        const dayA = parseISO(a.birthDate).getDate();
+        const dayB = parseISO(b.birthDate).getDate();
+        return dayA - dayB;
+      } catch (e) { return 0; }
+    };
 
     if (filter === 'all') {
-      return sortedClients;
+      return clients.sort((a,b) => a.name.localeCompare(b.name));
     }
 
     if (filter === 'today') {
-      return sortedClients.filter(client => {
+      return clients.filter(client => {
         if (!client.birthDate) return false;
         try { return isToday(parseISO(client.birthDate)); } catch (e) { return false; }
-      });
+      }).sort(sortedByDay);
     }
 
     if (filter === 'month') {
         const currentMonth = new Date().getMonth();
-        return sortedClients.filter(client => {
+        return clients.filter(client => {
             if (!client.birthDate) return false;
             try {
                 const birthMonth = parseISO(client.birthDate).getMonth();
                 return birthMonth === currentMonth;
             } catch(e) { return false; }
-        });
+        }).sort(sortedByDay);
     }
 
     return [];
   }, [clients, filter]);
 
-  const handleFilterToggle = () => {
-    const newFilter = filter === 'month' || filter === 'today' ? 'all' : 'month';
+  const handleFilterToggle = (newFilter: 'all' | 'month') => {
     setFilter(newFilter);
     if(newFilter === 'month') {
         router.push('/admin/clients?birthdays=true', { scroll: false });
@@ -108,17 +108,34 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
 
   const showActionColumn = filter === 'month' || filter === 'today';
 
+  const getPageTitle = () => {
+    if (filter === 'today') return 'Aniversariantes de Hoje';
+    if (filter === 'month') return 'Aniversariantes do Mês';
+    return 'Lista de Clientes';
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">Lista de Clientes</CardTitle>
-          <CardDescription className="text-sm">Visualize todos os seus clientes cadastrados.</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">{getPageTitle()}</CardTitle>
+          <CardDescription className="text-sm">
+            {filter === 'today' ? 'Envie uma mensagem de parabéns para seus clientes.' : 'Visualize todos os seus clientes cadastrados.'}
+          </CardDescription>
         </div>
-        <Button onClick={handleFilterToggle} variant={filter !== 'all' ? 'default' : 'outline'} className="mt-4 md:mt-0">
-          <Gift className="mr-2" />
-          {filter !== 'all' ? 'Mostrar Todos os Clientes' : 'Aniversariantes do Mês'}
-        </Button>
+         <div className="flex gap-2 mt-4 md:mt-0">
+          {filter === 'today' || filter === 'month' ? (
+             <Button onClick={() => handleFilterToggle('all')} variant="outline">
+               <Gift className="mr-2" />
+               Mostrar Todos
+             </Button>
+          ) : (
+             <Button onClick={() => handleFilterToggle('month')} variant="outline">
+              <Gift className="mr-2" />
+              Aniversariantes do Mês
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
@@ -133,7 +150,7 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
           <TableBody>
             {filteredClients.length > 0 ? (
               filteredClients.map((client, index) => {
-                if (!client.birthDate) return null; // Should not happen with current filter logic but good practice
+                if (!client.birthDate) return null;
 
                 const isSent = sentMessages[client.contact] === true;
                 const isBirthdayToday = isToday(parseISO(client.birthDate));
