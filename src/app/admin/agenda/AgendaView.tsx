@@ -202,7 +202,7 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
            <Button size="sm" onClick={() => setIsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Agendar</Button>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+          <div className="flex flex-col items-center justify-center gap-4">
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -328,3 +328,5 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
     </>
   );
 }
+
+    
