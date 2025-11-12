@@ -2,16 +2,18 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, CalendarCheck, Users, TrendingDown, TrendingUp, Landmark } from "lucide-react";
+import { DollarSign, CalendarCheck, Users, TrendingDown, TrendingUp, Landmark, CalendarClock } from "lucide-react";
 import { getBookings, getTransactions } from "@/lib/firebase";
 import type { Booking, Transaction } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format } from 'date-fns';
+
 
 function DashboardSkeleton() {
   return (
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: 6 }).map((_, i) => (
         <Card key={i}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <Skeleton className="h-4 w-2/3" />
@@ -41,13 +43,15 @@ export default function AdminDashboard() {
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
+        const todayString = format(now, 'yyyy-MM-dd');
 
         let monthBookingsCount = 0;
+        let todayBookingsCount = 0;
         const clientsThisMonth = new Set();
         const attendedClientsThisMonth = new Set();
 
         bookings.forEach((booking: Booking) => {
-            const bookingDate = new Date(booking.date);
+            const bookingDate = new Date(booking.date + 'T00:00:00'); // Ensure correct date parsing
             const bookingMonth = bookingDate.getMonth();
             const bookingYear = bookingDate.getFullYear();
             
@@ -61,6 +65,10 @@ export default function AdminDashboard() {
               if (booking.status === 'completed') {
                   attendedClientsThisMonth.add(booking.clientName);
               }
+            }
+
+            if (booking.date === todayString && (booking.status === 'confirmed' || booking.status === 'completed')) {
+                todayBookingsCount++;
             }
         });
 
@@ -79,6 +87,7 @@ export default function AdminDashboard() {
             totalExpenses,
             netRevenue,
             monthBookingsCount,
+            todayBookingsCount,
             newClientsCount: clientsThisMonth.size,
             attendedClientsCount: attendedClientsThisMonth.size,
         });
@@ -139,6 +148,18 @@ export default function AdminDashboard() {
             <div className="text-xl md:text-2xl font-bold">{stats.netRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
             <p className="text-xs text-muted-foreground">
               Faturamento bruto menos os gastos.
+            </p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Atendimentos de Hoje</CardTitle>
+            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl md:text-2xl font-bold">+{stats.todayBookingsCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Agendamentos confirmados para hoje.
             </p>
           </CardContent>
         </Card>
