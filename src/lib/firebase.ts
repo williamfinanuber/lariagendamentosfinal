@@ -54,16 +54,16 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 const defaultProcedures: Omit<Procedure, 'id'>[] = [
-  { name: 'Volume Brasileiro', description: 'Extensão de cílios com técnica de volume brasileiro.', price: 100, duration: 120, imageUrl: '' },
-  { name: 'Volume Express', description: 'Extensão de cílios rápida para um look mais discreto.', price: 80, duration: 90, imageUrl: '' },
-  { name: 'Volume Glamour', description: 'Extensão de cílios para um olhar marcante e glamouroso.', price: 120, duration: 150, imageUrl: '' },
-  { name: 'Volume Luxo', description: 'A técnica mais avançada para um volume e definição de luxo.', price: 150, duration: 180, imageUrl: '' },
+  { name: 'Volume Brasileiro', description: 'Técnica que mescla fios finos para um volume natural e marcante.', price: 100, duration: 120, imageUrl: '' },
+  { name: 'Volume Express', description: 'Volume rápido para um look mais cheio em menos tempo.', price: 80, duration: 90, imageUrl: '' },
+  { name: 'Volume Glamour', description: 'Cílios densos e definidos para um olhar glamouroso.', price: 120, duration: 150, imageUrl: '' },
+  { name: 'Volume Luxo', description: 'Máximo de volume e definição para um efeito de luxo.', price: 150, duration: 180, imageUrl: '' },
   { name: 'Manutenção Volume Brasileiro', description: 'Manutenção da extensão de volume brasileiro.', price: 70, duration: 90, imageUrl: '' },
   { name: 'Manutenção Volume Glamour', description: 'Manutenção da extensão de volume glamour.', price: 80, duration: 100, imageUrl: '' },
   { name: 'Manutenção Volume Luxo', description: 'Manutenção da extensão de volume de luxo.', price: 100, duration: 120, imageUrl: '' },
   { name: 'Remoção', description: 'Remoção segura das extensões de cílios.', price: 30, duration: 30, imageUrl: '' },
-  { name: 'Design de Sobrancelha Simples', description: 'Design e modelagem das sobrancelhas.', price: 25, duration: 30, imageUrl: '' },
-  { name: 'Design de Sobrancelha com Henna', description: 'Design de sobrancelhas com aplicação de henna para preenchimento.', price: 35, duration: 45, imageUrl: '' },
+  { name: 'Design de Sobrancelha Simples', description: 'Modelagem e alinhamento das sobrancelhas.', price: 25, duration: 30, imageUrl: '' },
+  { name: 'Design de Sobrancelha com Henna', description: 'Design com aplicação de henna para preenchimento e cor.', price: 35, duration: 45, imageUrl: '' },
 ];
 
 // Procedures
