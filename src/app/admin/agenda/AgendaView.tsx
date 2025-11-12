@@ -201,7 +201,7 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
           <CardTitle className="flex items-center gap-2 text-base md:text-xl"><CalendarIcon /> Calendário</CardTitle>
            <Button size="sm" onClick={() => setIsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Agendar</Button>
         </CardHeader>
-        <CardContent className="flex justify-center">
+        <CardContent className="flex flex-col items-center justify-center">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -229,6 +229,20 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
                 }
             }}
           />
+          <div className="mt-4 space-y-2 text-xs text-muted-foreground w-full max-w-xs">
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f59e0b' }}></div>
+                <span>Dia com agendamento(s) pendente(s).</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22c55e' }}></div>
+                <span>Dia com agendamento(s) confirmado(s).</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }}></div>
+                <span>Dia com todos atendimentos finalizados.</span>
+            </div>
+        </div>
         </CardContent>
       </Card>
       <Card className="lg:col-span-3">
