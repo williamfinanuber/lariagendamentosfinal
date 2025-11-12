@@ -80,7 +80,7 @@ export default function AdminDashboard() {
         const attendedClientsThisMonth = new Set();
 
         bookings.forEach((booking: Booking) => {
-            const bookingDate = new Date(booking.date + 'T00:00:00'); // Ensure correct date parsing
+            const bookingDate = parseISO(booking.date);
             const bookingMonth = bookingDate.getMonth();
             const bookingYear = bookingDate.getFullYear();
             

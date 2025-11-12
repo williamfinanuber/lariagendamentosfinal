@@ -56,8 +56,8 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
     const sortedByDay = (a: Client, b: Client) => {
       if (!a.birthDate || !b.birthDate) return 0;
       try {
-        const dayA = parseISO(a.birthDate).getDate();
-        const dayB = parseISO(b.birthDate).getDate();
+        const dayA = parseISO(a.birthDate).getUTCDate();
+        const dayB = parseISO(b.birthDate).getUTCDate();
         return dayA - dayB;
       } catch (e) { return 0; }
     };
@@ -66,23 +66,26 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
       return clients.sort((a,b) => a.name.localeCompare(b.name));
     }
 
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const todayDate = now.getDate();
+
     if (filter === 'today') {
       return clients.filter(client => {
         if (!client.birthDate) return false;
         try { 
-            // Use parseISO to handle timezone correctly by treating it as local time
-            return isToday(parseISO(client.birthDate + 'T00:00:00'));
+             const birthDate = parseISO(client.birthDate);
+             // Compare month and day, ignoring year and timezone differences.
+             return birthDate.getMonth() === currentMonth && birthDate.getDate() === todayDate;
         } catch (e) { return false; }
       }).sort((a,b) => a.name.localeCompare(b.name));
     }
 
     if (filter === 'month') {
-        const currentMonth = new Date().getMonth();
         return clients.filter(client => {
             if (!client.birthDate) return false;
             try {
-                // Use parseISO to handle timezone correctly
-                const birthMonth = parseISO(client.birthDate + 'T00:00:00').getMonth();
+                const birthMonth = parseISO(client.birthDate).getMonth();
                 return birthMonth === currentMonth;
             } catch(e) { return false; }
         }).sort(sortedByDay);
@@ -159,14 +162,15 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
                 if (!client.birthDate) return null;
 
                 const isSent = sentMessages[client.contact] === true;
-                const isBirthdayToday = isToday(parseISO(client.birthDate + 'T00:00:00'));
+                const birthDate = parseISO(client.birthDate);
+                const isBirthdayToday = isToday(birthDate);
 
                 return (
                   <TableRow key={index} className={cn(showActionColumn && isBirthdayToday && "bg-primary/10")}>
                     <TableCell className="font-medium text-sm md:text-base">{client.name}</TableCell>
                     <TableCell className="text-sm md:text-base">{client.contact}</TableCell>
                     <TableCell className="text-sm md:text-base">
-                      {format(parseISO(client.birthDate + 'T00:00:00'), "dd 'de' MMMM", { locale: ptBR })}
+                      {format(birthDate, "dd 'de' MMMM", { locale: ptBR })}
                     </TableCell>
                     {showActionColumn && (
                       <TableCell className="text-right">
