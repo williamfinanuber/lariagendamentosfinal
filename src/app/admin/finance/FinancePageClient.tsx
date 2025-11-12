@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { format, parseISO, isWithinInterval, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useForm, Controller } from 'react-hook-form';
@@ -171,7 +171,7 @@ export default function FinancePageClient({ initialTransactions, initialCategori
   const [isEditMode, setIsEditMode] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   
-  const reportRef = React.useRef<HTMLDivElement>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
   const [reportData, setReportData] = useState<PrintableReportProps | null>(null);
 
   const { toast } = useToast();
@@ -188,10 +188,21 @@ export default function FinancePageClient({ initialTransactions, initialCategori
 
    const reportForm = useForm<z.infer<typeof reportSchema>>({
     resolver: zodResolver(reportSchema),
+    defaultValues: {
+        startDate: format(new Date(), 'yyyy-MM-dd'),
+        endDate: format(new Date(), 'yyyy-MM-dd'),
+    }
   });
   
   const transactionType = watch('type');
   
+    useEffect(() => {
+        if (reportData) {
+            window.print();
+            setReportData(null); // Clean up after printing
+        }
+    }, [reportData]);
+
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
@@ -353,10 +364,11 @@ export default function FinancePageClient({ initialTransactions, initialCategori
     }
   }
 
-  const handleGenerateReport = async (data: z.infer<typeof reportSchema>) => {
+  const handleGenerateReport = (data: z.infer<typeof reportSchema>) => {
     const from = parse(data.startDate, 'yyyy-MM-dd', new Date());
     const to = parse(data.endDate, 'yyyy-MM-dd', new Date());
-    
+    to.setHours(23, 59, 59, 999); // Include the whole end day
+
     const filteredTransactions = transactions.filter(t => {
         const transactionDate = parseISO(t.date);
         return isWithinInterval(transactionDate, { start: from, end: to });
@@ -382,12 +394,6 @@ export default function FinancePageClient({ initialTransactions, initialCategori
     };
     
     setReportData(reportPayload);
-    
-    // Use a timeout to ensure the state has been updated before printing
-    setTimeout(() => {
-      window.print();
-    }, 100);
-
     setIsDateSelectorOpen(false);
   };
 
@@ -693,9 +699,11 @@ export default function FinancePageClient({ initialTransactions, initialCategori
         </DialogContent>
     </Dialog>
     
-    <div className="hidden">
+    <div className="hidden print:block">
       {reportData && <PrintableReport {...reportData} ref={reportRef} />}
     </div>
     </>
   );
 }
+
+    
