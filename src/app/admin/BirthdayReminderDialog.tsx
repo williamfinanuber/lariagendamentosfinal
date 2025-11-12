@@ -61,7 +61,7 @@ export default function BirthdayReminderDialog({ clients }: BirthdayReminderDial
 
   const handleOpenList = () => {
     setIsOpen(false);
-    router.push('/admin/clients');
+    router.push('/admin/clients?birthdays=today');
   };
 
   const handleClose = () => {

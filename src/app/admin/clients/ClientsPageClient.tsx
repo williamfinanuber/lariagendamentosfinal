@@ -5,11 +5,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Gift, MessageSquare, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface Client {
   name: string;
@@ -22,9 +22,8 @@ interface ClientsPageClientProps {
 }
 
 export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
-  const [showBirthdaysOnly, setShowBirthdaysOnly] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'month' | 'today'>('all');
   const [sentMessages, setSentMessages] = useState<Record<string, boolean>>({});
-  const [currentMonth, setCurrentMonth] = useState<number | null>(null);
   const router = useRouter();
 
   const getTodayStorageKey = () => {
@@ -32,16 +31,17 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
   };
 
   useEffect(() => {
-    setCurrentMonth(new Date().getMonth());
     // Load sent messages from localStorage on component mount
     const todayKey = getTodayStorageKey();
     const storedSentMessages = JSON.parse(localStorage.getItem(todayKey) || '{}');
     setSentMessages(storedSentMessages);
     
-    // Automatically enable filter if coming from dashboard
+    // Automatically set filter based on URL query param
     const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.has('birthdays')){
-        setShowBirthdaysOnly(true);
+    if(urlParams.get('birthdays') === 'today'){
+        setFilter('today');
+    } else if (urlParams.has('birthdays')) {
+        setFilter('month');
     }
   }, []);
 
@@ -52,32 +52,44 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
   };
 
   const filteredClients = useMemo(() => {
-    const baseClients = clients.sort((a, b) => {
-      if (!a.birthDate || !b.birthDate) return 0;
-      const dayA = parseISO(a.birthDate).getDate();
-      const dayB = parseISO(b.birthDate).getDate();
-      return dayA - dayB;
+    const sortedClients = clients.sort((a, b) => {
+        if (!a.birthDate || !b.birthDate) return 0;
+        try {
+            const dayA = parseISO(a.birthDate).getDate();
+            const dayB = parseISO(b.birthDate).getDate();
+            return dayA - dayB;
+        } catch (e) { return 0; }
     });
 
-    if (!showBirthdaysOnly) {
-      return baseClients;
+    if (filter === 'all') {
+      return sortedClients;
     }
 
-    if (currentMonth === null) {
-      return [];
+    if (filter === 'today') {
+      return sortedClients.filter(client => {
+        if (!client.birthDate) return false;
+        try { return isToday(parseISO(client.birthDate)); } catch (e) { return false; }
+      });
     }
 
-    return baseClients.filter(client => {
-      if (!client.birthDate) return false;
-      const birthMonth = parseISO(client.birthDate).getMonth();
-      return birthMonth === currentMonth;
-    });
-  }, [clients, showBirthdaysOnly, currentMonth]);
+    if (filter === 'month') {
+        const currentMonth = new Date().getMonth();
+        return sortedClients.filter(client => {
+            if (!client.birthDate) return false;
+            try {
+                const birthMonth = parseISO(client.birthDate).getMonth();
+                return birthMonth === currentMonth;
+            } catch(e) { return false; }
+        });
+    }
 
-  const toggleFilter = () => {
-    const isFiltering = !showBirthdaysOnly;
-    setShowBirthdaysOnly(isFiltering);
-    if(isFiltering) {
+    return [];
+  }, [clients, filter]);
+
+  const handleFilterToggle = () => {
+    const newFilter = filter === 'month' || filter === 'today' ? 'all' : 'month';
+    setFilter(newFilter);
+    if(newFilter === 'month') {
         router.push('/admin/clients?birthdays=true', { scroll: false });
     } else {
         router.push('/admin/clients', { scroll: false });
@@ -94,6 +106,8 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
     window.open(whatsappUrl, '_blank', 'noopener noreferrer');
   }
 
+  const showActionColumn = filter === 'month' || filter === 'today';
+
   return (
     <Card>
       <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -101,9 +115,9 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
           <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">Lista de Clientes</CardTitle>
           <CardDescription className="text-sm">Visualize todos os seus clientes cadastrados.</CardDescription>
         </div>
-        <Button onClick={toggleFilter} variant={showBirthdaysOnly ? 'default' : 'outline'} className="mt-4 md:mt-0">
+        <Button onClick={handleFilterToggle} variant={filter !== 'all' ? 'default' : 'outline'} className="mt-4 md:mt-0">
           <Gift className="mr-2" />
-          {showBirthdaysOnly ? 'Mostrar Todos os Clientes' : 'Aniversariantes do Mês'}
+          {filter !== 'all' ? 'Mostrar Todos os Clientes' : 'Aniversariantes do Mês'}
         </Button>
       </CardHeader>
       <CardContent>
@@ -113,25 +127,27 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
               <TableHead>Nome</TableHead>
               <TableHead>Contato</TableHead>
               <TableHead>Data de Nascimento</TableHead>
-              {showBirthdaysOnly && <TableHead className="text-right">Ação</TableHead>}
+              {showActionColumn && <TableHead className="text-right">Ação</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredClients.length > 0 ? (
               filteredClients.map((client, index) => {
+                if (!client.birthDate) return null; // Should not happen with current filter logic but good practice
+
                 const isSent = sentMessages[client.contact] === true;
-                const isTodayBirthday = client.birthDate && parseISO(client.birthDate).getMonth() === new Date().getMonth() && parseISO(client.birthDate).getDate() === new Date().getDate();
+                const isBirthdayToday = isToday(parseISO(client.birthDate));
 
                 return (
-                  <TableRow key={index} className={cn(showBirthdaysOnly && isTodayBirthday && "bg-primary/10")}>
+                  <TableRow key={index} className={cn(showActionColumn && isBirthdayToday && "bg-primary/10")}>
                     <TableCell className="font-medium text-sm md:text-base">{client.name}</TableCell>
                     <TableCell className="text-sm md:text-base">{client.contact}</TableCell>
                     <TableCell className="text-sm md:text-base">
-                      {client.birthDate ? format(parseISO(client.birthDate), "dd 'de' MMMM", { locale: ptBR }) : 'Não informado'}
+                      {format(parseISO(client.birthDate), "dd 'de' MMMM", { locale: ptBR })}
                     </TableCell>
-                    {showBirthdaysOnly && (
+                    {showActionColumn && (
                       <TableCell className="text-right">
-                         {isTodayBirthday && (
+                         {isBirthdayToday && (
                             <Button 
                                 size="sm" 
                                 className={cn(
@@ -144,7 +160,7 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
                                 disabled={isSent}
                             >
                                 {isSent ? <Check className="mr-2" /> : <MessageSquare className="mr-2" />}
-                                {isSent ? 'Mensagem Enviada' : 'Enviar Parabéns'}
+                                {isSent ? 'Enviado' : 'Enviar Parabéns'}
                             </Button>
                          )}
                       </TableCell>
@@ -154,8 +170,10 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={showBirthdaysOnly ? 4 : 3} className="h-24 text-center text-sm md:text-base">
-                  {showBirthdaysOnly ? 'Nenhum aniversariante este mês.' : 'Nenhum cliente encontrado.'}
+                <TableCell colSpan={showActionColumn ? 4 : 3} className="h-24 text-center text-sm md:text-base">
+                  {filter === 'all' ? 'Nenhum cliente encontrado.' : 
+                   filter === 'month' ? 'Nenhum aniversariante este mês.' :
+                   'Nenhum aniversariante hoje.'}
                 </TableCell>
               </TableRow>
             )}
