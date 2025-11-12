@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO, isToday, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Gift, MessageSquare, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -56,8 +56,8 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
     const sortedByDay = (a: Client, b: Client) => {
       if (!a.birthDate || !b.birthDate) return 0;
       try {
-        const dayA = parseISO(a.birthDate).getUTCDate();
-        const dayB = parseISO(b.birthDate).getUTCDate();
+        const dayA = parse(a.birthDate, 'yyyy-MM-dd', new Date()).getUTCDate();
+        const dayB = parse(b.birthDate, 'yyyy-MM-dd', new Date()).getUTCDate();
         return dayA - dayB;
       } catch (e) { return 0; }
     };
@@ -68,15 +68,15 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
 
     const now = new Date();
     const currentMonth = now.getMonth();
-    const todayDate = now.getDate();
 
     if (filter === 'today') {
       return clients.filter(client => {
         if (!client.birthDate) return false;
         try { 
-             const birthDate = parseISO(client.birthDate);
-             // Compare month and day, ignoring year and timezone differences.
-             return birthDate.getMonth() === currentMonth && birthDate.getDate() === todayDate;
+            // isToday from date-fns can be unreliable with timezones.
+            // A more robust way is to compare month and day.
+            const birthDate = parse(client.birthDate, 'yyyy-MM-dd', new Date());
+            return birthDate.getMonth() === now.getMonth() && birthDate.getDate() === now.getDate();
         } catch (e) { return false; }
       }).sort((a,b) => a.name.localeCompare(b.name));
     }
@@ -85,7 +85,7 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
         return clients.filter(client => {
             if (!client.birthDate) return false;
             try {
-                const birthMonth = parseISO(client.birthDate).getMonth();
+                const birthMonth = parse(client.birthDate, 'yyyy-MM-dd', new Date()).getMonth();
                 return birthMonth === currentMonth;
             } catch(e) { return false; }
         }).sort(sortedByDay);
@@ -162,8 +162,8 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
                 if (!client.birthDate) return null;
 
                 const isSent = sentMessages[client.contact] === true;
-                const birthDate = parseISO(client.birthDate);
-                const isBirthdayToday = isToday(birthDate);
+                const birthDate = parse(client.birthDate, 'yyyy-MM-dd', new Date());
+                const isBirthdayToday = birthDate.getMonth() === new Date().getMonth() && birthDate.getDate() === new Date().getDate();
 
                 return (
                   <TableRow key={index} className={cn(showActionColumn && isBirthdayToday && "bg-primary/10")}>
