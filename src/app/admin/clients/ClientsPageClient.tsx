@@ -70,7 +70,7 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
       return clients.filter(client => {
         if (!client.birthDate) return false;
         try { return isToday(parseISO(client.birthDate)); } catch (e) { return false; }
-      }).sort(sortedByDay);
+      }).sort((a,b) => a.name.localeCompare(b.name));
     }
 
     if (filter === 'month') {
@@ -87,10 +87,12 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
     return [];
   }, [clients, filter]);
 
-  const handleFilterToggle = (newFilter: 'all' | 'month') => {
+  const handleFilterToggle = (newFilter: 'all' | 'month' | 'today') => {
     setFilter(newFilter);
     if(newFilter === 'month') {
         router.push('/admin/clients?birthdays=true', { scroll: false });
+    } else if (newFilter === 'today') {
+        router.push('/admin/clients?birthdays=today', { scroll: false });
     } else {
         router.push('/admin/clients', { scroll: false });
     }
@@ -125,12 +127,12 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
         </div>
          <div className="flex gap-2 mt-4 md:mt-0">
           {filter === 'today' || filter === 'month' ? (
-             <Button onClick={() => handleFilterToggle('all')} variant="outline">
+             <Button onClick={() => handleFilterToggle('all', 'all')} variant="outline">
                <Gift className="mr-2" />
                Mostrar Todos
              </Button>
           ) : (
-             <Button onClick={() => handleFilterToggle('month')} variant="outline">
+             <Button onClick={() => handleFilterToggle('month', 'month')} variant="outline">
               <Gift className="mr-2" />
               Aniversariantes do Mês
             </Button>
