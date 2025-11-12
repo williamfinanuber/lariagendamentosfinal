@@ -1,12 +1,13 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
-import { format, parseISO } from 'date-fns';
+import React, { useState, useMemo } from 'react';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { DateRange } from 'react-day-picker';
 import {
   DollarSign,
   PlusCircle,
@@ -14,10 +15,8 @@ import {
   TrendingUp,
   TrendingDown,
   Landmark,
-  Tag,
   Loader2,
   Calendar as CalendarIcon,
-  Edit,
   Printer,
   Pencil,
   AlertTriangle,
@@ -68,6 +67,9 @@ import { useToast } from '@/hooks/use-toast';
 import { addTransaction, deleteTransaction, addCategory, deleteCategory, getTransactions, getCategories, getBookings, updateTransaction, deleteAllTransactions } from '@/lib/firebase';
 import type { Transaction, Category, Booking } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 
 const transactionSchema = z.object({
@@ -89,11 +91,19 @@ interface PrintableReportProps {
     transactions: Transaction[];
     totals: { totalRevenue: number, totalExpenses: number, netRevenue: number };
     categories: Category[];
+    period?: { from: Date, to: Date };
 }
 
-const PrintableReport = ({ transactions, totals, categories }: PrintableReportProps) => (
+const PrintableReport = ({ transactions, totals, categories, period }: PrintableReportProps) => (
   <div className="print-container space-y-6 p-8">
-      <h2 className="text-2xl font-bold text-center">Relatório Financeiro</h2>
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold">Relatório Financeiro</h2>
+        {period && (
+            <p className="text-muted-foreground">
+                Período de {format(period.from, 'dd/MM/yyyy')} a {format(period.to, 'dd/MM/yyyy')}
+            </p>
+        )}
+      </div>
       <div className="grid gap-4 md:grid-cols-3 print:grid-cols-3">
             <Card className="border-primary">
               <CardHeader className="pb-2"><CardTitle className="text-base">Faturamento Bruto</CardTitle></CardHeader>
@@ -142,18 +152,25 @@ const PrintableReport = ({ transactions, totals, categories }: PrintableReportPr
 export default function FinancePageClient({ initialTransactions, initialCategories, initialBookings }: FinancePageClientProps) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false);
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [reportData, setReportData] = useState<PrintableReportProps | null>(null);
+
   const { toast } = useToast();
   
   const handlePrint = () => {
-    window.print();
+    setIsReportDialogOpen(false); // Close the preview dialog
+    setTimeout(() => {
+        window.print();
+    }, 300); // Give it a moment to close the dialog before printing
   };
 
   const { register, handleSubmit, control, watch, reset, setValue, formState: { errors } } = useForm<z.infer<typeof transactionSchema>>({
@@ -171,14 +188,12 @@ export default function FinancePageClient({ initialTransactions, initialCategori
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
-        const [trans, cats, books] = await Promise.all([
+        const [trans, cats] = await Promise.all([
             getTransactions(),
-            getCategories(),
-            getBookings(),
+            getCategories()
         ]);
         setTransactions(trans);
         setCategories(cats);
-        setBookings(books);
     } catch (error) {
         console.error("Error fetching data:", error);
         toast({ title: "Erro ao atualizar dados", variant: 'destructive'});
@@ -330,6 +345,44 @@ export default function FinancePageClient({ initialTransactions, initialCategori
         setIsCategoryLoading(false);
     }
   }
+
+  const handleGenerateReport = () => {
+    if (!dateRange || !dateRange.from || !dateRange.to) {
+        toast({ title: "Período inválido", description: "Por favor, selecione data de início e fim.", variant: "destructive" });
+        return;
+    }
+    
+    const { from, to } = dateRange;
+
+    const filteredTransactions = transactions.filter(t => {
+        const transactionDate = parseISO(t.date);
+        return isWithinInterval(transactionDate, { start: from, end: to });
+    });
+
+    const revenue = filteredTransactions
+      .filter(t => t.type === 'revenue')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    const expenses = filteredTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    const reportPayload: PrintableReportProps = {
+        transactions: filteredTransactions,
+        totals: {
+            totalRevenue: revenue,
+            totalExpenses: expenses,
+            netRevenue: revenue - expenses
+        },
+        categories: categories,
+        period: { from, to }
+    };
+    
+    setReportData(reportPayload);
+    setIsDateSelectorOpen(false);
+    setIsReportDialogOpen(true);
+  };
+
 
   const renderFinancialCards = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -570,13 +623,13 @@ export default function FinancePageClient({ initialTransactions, initialCategori
                 <CardHeader className="flex flex-col gap-y-2 md:flex-row md:items-center md:justify-between">
                     <div>
                         <CardTitle className="text-lg md:text-xl">Relatório Financeiro</CardTitle>
-                        <CardDescription className="text-sm">Visualize e imprima um resumo das suas finanças.</CardDescription>
+                        <CardDescription className="text-sm">Gere um relatório para um período específico.</CardDescription>
                     </div>
-                    <Button onClick={() => setIsReportDialogOpen(true)}><Printer className="mr-2"/> Visualizar para Impressão</Button>
+                    <Button onClick={() => setIsDateSelectorOpen(true)}><Printer className="mr-2"/> Imprimir Relatório</Button>
                 </CardHeader>
                 <CardContent>
                      <div className="border rounded-lg p-4">
-                        <h3 className="text-base md:text-lg font-semibold mb-4 text-center">Resumo do Relatório</h3>
+                        <h3 className="text-base md:text-lg font-semibold mb-4 text-center">Resumo de todo o período</h3>
                         <div className="grid gap-4 md:grid-cols-3 mb-6">
                             <Card>
                                 <CardHeader className="pb-2"><CardTitle className="text-xs md:text-sm">Faturamento Bruto</CardTitle></CardHeader>
@@ -591,7 +644,7 @@ export default function FinancePageClient({ initialTransactions, initialCategori
                                 <CardContent><p className="text-base md:text-lg font-bold">{netRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></CardContent>
                             </Card>
                         </div>
-                        <p className="text-center text-muted-foreground mt-4 text-sm">Clique em "Visualizar para Impressão" para abrir a versão completa e imprimir ou salvar como PDF.</p>
+                        <p className="text-center text-muted-foreground mt-4 text-sm">Clique em "Imprimir Relatório" para selecionar um período e gerar o PDF.</p>
                      </div>
                 </CardContent>
             </Card>
@@ -599,20 +652,47 @@ export default function FinancePageClient({ initialTransactions, initialCategori
       </Tabs>
     </div>
 
+    {/* Date Range Selector Dialog */}
+    <Dialog open={isDateSelectorOpen} onOpenChange={setIsDateSelectorOpen}>
+        <DialogContent className="sm:max-w-auto">
+            <DialogHeader>
+                <DialogTitle>Selecionar Período do Relatório</DialogTitle>
+                <DialogDescription>
+                    Escolha as datas de início e fim para gerar seu relatório financeiro.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2 justify-center">
+                 <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    locale={ptBR}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDateSelectorOpen(false)}>Cancelar</Button>
+                <Button onClick={handleGenerateReport} disabled={!dateRange || !dateRange.from || !dateRange.to}>
+                    <Printer className="mr-2"/>Imprimir
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+
+    {/* Report Preview Dialog */}
     <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col print:h-auto print:max-w-full print:border-0 print:shadow-none">
         <DialogHeader className="print:hidden">
-          <DialogTitle>Visualização de Impressão do Relatório</DialogTitle>
+          <DialogTitle>Relatório para Impressão</DialogTitle>
           <DialogDescription>
             Use a função de impressão do seu navegador (Ctrl+P ou Cmd+P) para salvar como PDF ou imprimir.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-auto">
-           <PrintableReport 
-                transactions={transactions} 
-                totals={{ totalRevenue, totalExpenses, netRevenue}}
-                categories={categories}
-            />
+           {reportData && <PrintableReport {...reportData} />}
         </div>
         <DialogFooter className="print:hidden">
           <Button variant="outline" onClick={() => setIsReportDialogOpen(false)}>Fechar</Button>
