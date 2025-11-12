@@ -26,6 +26,7 @@ const birthdayMessage = (clientName: string) => {
 
 export default function BirthdayReminderDialog({ clients }: BirthdayReminderDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [unsentClients, setUnsentClients] = useState<Client[]>([]);
   const router = useRouter();
 
   const getTodayStorageKey = () => {
@@ -36,18 +37,19 @@ export default function BirthdayReminderDialog({ clients }: BirthdayReminderDial
     if (clients.length > 0) {
       const todayKey = getTodayStorageKey();
       const sentContacts = JSON.parse(localStorage.getItem(todayKey) || '{}');
+      const filteredUnsent = clients.filter(client => !sentContacts[client.contact]);
       
-      const unsentClients = clients.filter(client => !sentContacts[client.contact]);
-      
-      if (unsentClients.length > 0) {
+      setUnsentClients(filteredUnsent);
+
+      if (filteredUnsent.length > 0) {
         setIsOpen(true);
       }
     }
   }, [clients]);
 
   const handleSendSingle = () => {
-    if (clients.length === 1) {
-      const client = clients[0];
+    if (unsentClients.length === 1) {
+      const client = unsentClients[0];
       const todayKey = getTodayStorageKey();
       const sentContacts = JSON.parse(localStorage.getItem(todayKey) || '{}');
       sentContacts[client.contact] = true;
@@ -74,16 +76,8 @@ export default function BirthdayReminderDialog({ clients }: BirthdayReminderDial
      setIsOpen(false);
   }
 
-  if (clients.length === 0) {
+  if (unsentClients.length === 0) {
     return null;
-  }
-
-  const todayKey = getTodayStorageKey();
-  const sentContacts = JSON.parse(localStorage.getItem(todayKey) || '{}');
-  const unsentClients = clients.filter(client => !sentContacts[client.contact]);
-
-  if(unsentClients.length === 0) {
-      return null;
   }
 
   const isSingleBirthday = unsentClients.length === 1;
