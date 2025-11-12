@@ -200,7 +200,7 @@ export default function AdminDashboard() {
             <CalendarClock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">+{stats.todayBookingsCount}</div>
+            <div className="text-xl md:text-2xl font-bold">{stats.todayBookingsCount}</div>
             <p className="text-xs text-muted-foreground">
               Agendamentos confirmados para hoje.
             </p>
@@ -212,7 +212,7 @@ export default function AdminDashboard() {
             <CalendarCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">+{stats.monthBookingsCount}</div>
+            <div className="text-xl md:text-2xl font-bold">{stats.monthBookingsCount}</div>
             <p className="text-xs text-muted-foreground">
               Agendamentos confirmados/concluídos no mês.
             </p>
@@ -224,7 +224,7 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">+{stats.attendedClientsCount}</div>
+            <div className="text-xl md:text-2xl font-bold">{stats.attendedClientsCount}</div>
             <p className="text-xs text-muted-foreground">
               Clientes únicos com atendimentos finalizados este mês.
             </p>
