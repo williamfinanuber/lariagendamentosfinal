@@ -69,7 +69,10 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
     if (filter === 'today') {
       return clients.filter(client => {
         if (!client.birthDate) return false;
-        try { return isToday(parseISO(client.birthDate)); } catch (e) { return false; }
+        try { 
+            // Use parseISO to handle timezone correctly by treating it as local time
+            return isToday(parseISO(client.birthDate + 'T00:00:00'));
+        } catch (e) { return false; }
       }).sort((a,b) => a.name.localeCompare(b.name));
     }
 
@@ -78,7 +81,8 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
         return clients.filter(client => {
             if (!client.birthDate) return false;
             try {
-                const birthMonth = parseISO(client.birthDate).getMonth();
+                // Use parseISO to handle timezone correctly
+                const birthMonth = parseISO(client.birthDate + 'T00:00:00').getMonth();
                 return birthMonth === currentMonth;
             } catch(e) { return false; }
         }).sort(sortedByDay);
@@ -127,12 +131,12 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
         </div>
          <div className="flex gap-2 mt-4 md:mt-0">
           {filter === 'today' || filter === 'month' ? (
-             <Button onClick={() => handleFilterToggle('all', 'all')} variant="outline">
+             <Button onClick={() => handleFilterToggle('all')} variant="outline">
                <Gift className="mr-2" />
                Mostrar Todos
              </Button>
           ) : (
-             <Button onClick={() => handleFilterToggle('month', 'month')} variant="outline">
+             <Button onClick={() => handleFilterToggle('month')} variant="outline">
               <Gift className="mr-2" />
               Aniversariantes do Mês
             </Button>
@@ -155,14 +159,14 @@ export default function ClientsPageClient({ clients }: ClientsPageClientProps) {
                 if (!client.birthDate) return null;
 
                 const isSent = sentMessages[client.contact] === true;
-                const isBirthdayToday = isToday(parseISO(client.birthDate));
+                const isBirthdayToday = isToday(parseISO(client.birthDate + 'T00:00:00'));
 
                 return (
                   <TableRow key={index} className={cn(showActionColumn && isBirthdayToday && "bg-primary/10")}>
                     <TableCell className="font-medium text-sm md:text-base">{client.name}</TableCell>
                     <TableCell className="text-sm md:text-base">{client.contact}</TableCell>
                     <TableCell className="text-sm md:text-base">
-                      {format(parseISO(client.birthDate), "dd 'de' MMMM", { locale: ptBR })}
+                      {format(parseISO(client.birthDate + 'T00:00:00'), "dd 'de' MMMM", { locale: ptBR })}
                     </TableCell>
                     {showActionColumn && (
                       <TableCell className="text-right">
