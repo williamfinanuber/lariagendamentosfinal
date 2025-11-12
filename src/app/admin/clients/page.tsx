@@ -4,8 +4,9 @@
 import { getBookings } from '@/lib/firebase';
 import type { Booking } from '@/lib/types';
 import ClientsPageClient from './ClientsPageClient';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface Client {
   name: string;
@@ -19,7 +20,8 @@ function getUniqueClients(bookings: Booking[]): Client[] {
     const key = booking.clientContact || booking.clientName;
     if (!key) return; 
 
-    if (!clientsMap.has(key)) {
+    // Prioritize entries with birthdate
+    if (!clientsMap.has(key) || (booking.clientBirthDate && !clientsMap.get(key)?.birthDate)) {
       clientsMap.set(key, {
         name: booking.clientName,
         contact: booking.clientContact,
@@ -30,7 +32,7 @@ function getUniqueClients(bookings: Booking[]): Client[] {
   return Array.from(clientsMap.values());
 }
 
-export default function ClientsPage() {
+function ClientsPageContent() {
   const [clients, setClients] = useState<Client[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,6 +58,15 @@ export default function ClientsPage() {
   if(!clients) {
     return <div>Não foi possível carregar os clientes.</div>
   }
-
+  
   return <ClientsPageClient clients={clients} />;
+}
+
+
+export default function ClientsPage() {
+    return (
+        <Suspense fallback={<div className="flex h-64 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <ClientsPageContent />
+        </Suspense>
+    )
 }

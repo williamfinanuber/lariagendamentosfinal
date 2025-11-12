@@ -7,7 +7,8 @@ import { getBookings, getTransactions } from "@/lib/firebase";
 import type { Booking, Transaction } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import BirthdayReminderDialog from "./BirthdayReminderDialog";
 
 
 function DashboardSkeleton() {
@@ -28,8 +29,33 @@ function DashboardSkeleton() {
   );
 }
 
+interface Client {
+  name: string;
+  contact: string;
+  birthDate?: string;
+}
+
+function getUniqueClients(bookings: Booking[]): Client[] {
+  const clientsMap = new Map<string, Client>();
+  bookings.forEach(booking => {
+    const key = booking.clientContact || booking.clientName;
+    if (!key) return; 
+
+    if (!clientsMap.has(key) || (booking.clientBirthDate && !clientsMap.get(key)?.birthDate)) {
+      clientsMap.set(key, {
+        name: booking.clientName,
+        contact: booking.clientContact,
+        birthDate: booking.clientBirthDate,
+      });
+    }
+  });
+  return Array.from(clientsMap.values());
+}
+
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
+  const [birthdayClients, setBirthdayClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +70,10 @@ export default function AdminDashboard() {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         const todayString = format(now, 'yyyy-MM-dd');
+        const todayMonth = now.getMonth();
+        const todayDate = now.getDate();
 
+        // Stats Calculation
         let monthBookingsCount = 0;
         let todayBookingsCount = 0;
         const clientsThisMonth = new Set();
@@ -92,6 +121,19 @@ export default function AdminDashboard() {
             attendedClientsCount: attendedClientsThisMonth.size,
         });
 
+        // Birthday Logic
+        const allClients = getUniqueClients(bookings);
+        const todayBirthdayClients = allClients.filter(client => {
+          if (!client.birthDate) return false;
+          try {
+              const birthDate = parseISO(client.birthDate);
+              return birthDate.getMonth() === todayMonth && birthDate.getDate() === todayDate;
+          } catch (e) {
+              return false; // Invalid date format
+          }
+        });
+        setBirthdayClients(todayBirthdayClients);
+
       } catch (error) {
         console.error("Error fetching dashboard stats", error);
       } finally {
@@ -102,7 +144,7 @@ export default function AdminDashboard() {
     fetchDashboardStats();
   }, []);
 
-  if (isLoading || !stats) {
+  if (isLoading) {
     return (
         <div className="space-y-6">
            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -113,6 +155,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+       <BirthdayReminderDialog clients={birthdayClients} />
        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
          <Card>
