@@ -201,48 +201,50 @@ export default function AgendaView({ initialBookings, procedures, initialAvailab
           <CardTitle className="flex items-center gap-2 text-base md:text-xl"><CalendarIcon /> Calendário</CardTitle>
            <Button size="sm" onClick={() => setIsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Agendar</Button>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            initialFocus
-            locale={ptBR}
-            className="rounded-md border"
-            modifiers={{ 
-              hasConfirmed: hasConfirmedDays,
-              allCompleted: completedDays,
-              hasPending: hasPendingDays,
-            }}
-            modifiersStyles={{ 
-                hasPending: {
-                    backgroundColor: '#f59e0b', // amber-500
-                    color: 'white',
-                },
-                hasConfirmed: {
-                    backgroundColor: '#22c55e', // green-500
-                    color: 'white',
-                },
-                allCompleted: {
-                    backgroundColor: '#ef4444', // red-500
-                    color: 'white',
-                }
-            }}
-          />
-          <div className="mt-4 space-y-2 text-xs text-muted-foreground w-full max-w-xs">
-            <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f59e0b' }}></div>
-                <span>Dia com agendamento(s) pendente(s).</span>
+        <CardContent>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+                locale={ptBR}
+                className="rounded-md border"
+                modifiers={{ 
+                  hasConfirmed: hasConfirmedDays,
+                  allCompleted: completedDays,
+                  hasPending: hasPendingDays,
+                }}
+                modifiersStyles={{ 
+                    hasPending: {
+                        backgroundColor: '#f59e0b', // amber-500
+                        color: 'white',
+                    },
+                    hasConfirmed: {
+                        backgroundColor: '#22c55e', // green-500
+                        color: 'white',
+                    },
+                    allCompleted: {
+                        backgroundColor: '#ef4444', // red-500
+                        color: 'white',
+                    }
+                }}
+              />
+              <div className="space-y-2 text-xs text-muted-foreground w-full max-w-xs md:w-auto">
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f59e0b' }}></div>
+                    <span>Dia com agendamento(s) pendente(s).</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22c55e' }}></div>
+                    <span>Dia com agendamento(s) confirmado(s).</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }}></div>
+                    <span>Dia com todos atendimentos finalizados.</span>
+                </div>
             </div>
-            <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22c55e' }}></div>
-                <span>Dia com agendamento(s) confirmado(s).</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }}></div>
-                <span>Dia com todos atendimentos finalizados.</span>
-            </div>
-        </div>
+          </div>
         </CardContent>
       </Card>
       <Card className="lg:col-span-3">
